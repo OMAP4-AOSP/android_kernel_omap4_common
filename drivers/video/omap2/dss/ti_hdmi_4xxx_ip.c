@@ -143,9 +143,9 @@ static int hdmi_pll_init(struct hdmi_ip_data *ip_data)
 	/* go now */
 	REG_FLD_MOD(pll_base, PLLCTRL_PLL_GO, 0x1, 0, 0);
 
-	/* wait for bit change */
+	/* wait for PLL opertation to be over */
 	if (hdmi_wait_for_bit_change(pll_base, PLLCTRL_PLL_GO,
-							0, 0, 1) != 1) {
+							0, 0, 0)) {
 		pr_err("PLL GO bit not set\n");
 		return -ETIMEDOUT;
 	}
