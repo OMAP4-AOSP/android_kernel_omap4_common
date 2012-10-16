@@ -41,6 +41,9 @@
 #define HDMI_CORE_CEC_RETRY    200
 #define HDMI_CEC_TX_CMD_RETRY  400
 
+#define HDMI_50MHZ_CLK_FREQ    50000
+#define HDMI_100MHZ_CLK_FREQ   100000
+
 #define HDMI_WP_SYSCONFIG_SMART_IDLE 0x3
 
 static inline void hdmi_write_reg(void __iomem *base_addr,
@@ -304,7 +307,7 @@ err:
 	return r;
 }
 
-int ti_hdmi_4xxx_phy_enable(struct hdmi_ip_data *ip_data)
+int ti_hdmi_4xxx_phy_enable(struct hdmi_ip_data *ip_data, unsigned long phy)
 {
 	u16 r = 0;
 	void __iomem *phy_base = hdmi_phy_base(ip_data);
@@ -335,7 +338,13 @@ int ti_hdmi_4xxx_phy_enable(struct hdmi_ip_data *ip_data)
 	 * use HFBITCLK write HDMI_TXPHY_TX_CONTROL_FREQOUT field
 	 */
 	if (cpu_is_omap44xx()) {
-		REG_FLD_MOD(phy_base, HDMI_TXPHY_TX_CTRL, 0x1, 31, 30);
+		if (phy <= HDMI_50MHZ_CLK_FREQ)
+			REG_FLD_MOD(phy_base, HDMI_TXPHY_TX_CTRL, 0x0, 31, 30);
+		else if ((HDMI_50MHZ_CLK_FREQ < phy) &&
+				(phy <= HDMI_100MHZ_CLK_FREQ))
+			REG_FLD_MOD(phy_base, HDMI_TXPHY_TX_CTRL, 0x1, 31, 30);
+		else
+			REG_FLD_MOD(phy_base, HDMI_TXPHY_TX_CTRL, 0x2, 31, 30);
 	} else if (cpu_is_omap54xx()) {
 		if (pclk < 62500) {
 			freqout = 0;

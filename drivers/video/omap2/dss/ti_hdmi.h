@@ -152,7 +152,7 @@ struct ti_hdmi_ip_ops {
 
 	void (*video_configure)(struct hdmi_ip_data *ip_data);
 
-	int (*phy_enable)(struct hdmi_ip_data *ip_data);
+	int (*phy_enable)(struct hdmi_ip_data *ip_data, unsigned long phy);
 
 	void (*phy_disable)(struct hdmi_ip_data *ip_data);
 
@@ -291,7 +291,7 @@ struct hdmi_ip_data {
 	wait_queue_head_t tx_complete;/*ti signal TX complete*/
 	int cec_int;
 };
-int ti_hdmi_4xxx_phy_enable(struct hdmi_ip_data *ip_data);
+int ti_hdmi_4xxx_phy_enable(struct hdmi_ip_data *ip_data, unsigned long phy);
 void ti_hdmi_4xxx_phy_disable(struct hdmi_ip_data *ip_data);
 int ti_hdmi_4xxx_read_edid(struct hdmi_ip_data *ip_data, u8 *edid, int len);
 bool ti_hdmi_4xxx_detect(struct hdmi_ip_data *ip_data);

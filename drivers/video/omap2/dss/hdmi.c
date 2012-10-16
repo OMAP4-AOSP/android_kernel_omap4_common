@@ -467,7 +467,7 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 		goto err;
 	}
 
-	r = hdmi.ip_data.ops->phy_enable(&hdmi.ip_data);
+	r = hdmi.ip_data.ops->phy_enable(&hdmi.ip_data, phy);
 	if (r) {
 		DSSDBG("Failed to start PHY\n");
 		goto err;
