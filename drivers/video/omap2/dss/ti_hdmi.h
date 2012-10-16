@@ -148,6 +148,23 @@ struct hdmi_irq_vector {
 	u8      core;
 };
 
+enum hdmi_3d_format {
+	HDMI_FRAME_PACKING = 0,
+	HDMI_FIELD_ALTERNATIVE = 1,
+	HDMI_LINE_ALTERNATIVE = 2,
+	HDMI_SIDE_BY_SIDE_FULL = 3,
+	HDMI_L_DEPTH = 4,
+	HDMI_L_DEPTH_GFX_GFX_DEPTH = 5,
+	HDMI_TOPBOTTOM = 6,
+	HDMI_SIDE_BY_SIDE_HALF = 8
+};
+
+struct hdmi_core_vendor_specific_infoframe {
+	bool enable;
+	u8 s3d_structure;
+	u8 s3d_ext_data;
+};
+
 struct ti_hdmi_ip_ops {
 
 	void (*video_configure)(struct hdmi_ip_data *ip_data);
@@ -226,6 +243,9 @@ struct ti_hdmi_ip_ops {
 	int (*hdcp_int_handler)(struct hdmi_ip_data *ip_data);
 
 	int (*reset_wrapper)(struct hdmi_ip_data *ip_data);
+
+	void (*vsi_config)(struct hdmi_ip_data *ip_data,
+			struct hdmi_core_vendor_specific_infoframe *config);
 
 };
 
@@ -346,6 +366,8 @@ int ti_hdmi_4xxx_check_rxdet_line(struct hdmi_ip_data *ip_data);
 int ti_hdmi_4xxx_set_av_mute(struct hdmi_ip_data *ip_data, u8 av_mute_state);
 void ti_hdmi_5xxx_basic_configure(struct hdmi_ip_data *ip_data);
 void ti_hdmi_5xxx_core_dump(struct hdmi_ip_data *ip_data, struct seq_file *s);
+void hdmi_core_vsi_config(struct hdmi_ip_data *ip_data,
+		struct hdmi_core_vendor_specific_infoframe *config);
 int ti_hdmi_5xxx_read_edid(struct hdmi_ip_data *ip_data,
 				u8 *edid, int len);
 int ti_hdmi_5xxx_irq_handler(struct hdmi_ip_data *ip_data);
