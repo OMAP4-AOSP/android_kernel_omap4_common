@@ -1123,8 +1123,10 @@ static void hci_power_on(struct work_struct *work)
 
 	BT_DBG("%s", hdev->name);
 
+#ifndef CONFIG_MACH_OMAP_BN_HD
 	if (hci_dev_open(hdev->id) < 0)
 		return;
+#endif
 
 	if (test_bit(HCI_AUTO_OFF, &hdev->dev_flags))
 		schedule_delayed_work(&hdev->power_off,
@@ -1141,7 +1143,9 @@ static void hci_power_off(struct work_struct *work)
 
 	BT_DBG("%s", hdev->name);
 
+#ifndef CONFIG_MACH_OMAP_BN_HD
 	hci_dev_do_close(hdev);
+#endif
 }
 
 static void hci_discov_off(struct work_struct *work)
