@@ -401,7 +401,7 @@ static void hdmi_panel_disable(struct omap_dss_device *dssdev)
 		dssdev->manager->blank(dssdev->manager, true);
 		msleep(100);
 		omapdss_hdmi_display_disable(dssdev);
-	} else
+	} else if (dssdev->state != OMAP_DSS_DISPLAY_SUSPENDED)
 		dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
 
 done:
@@ -411,6 +411,7 @@ done:
 static int hdmi_panel_suspend(struct omap_dss_device *dssdev)
 {
 	int r = 0;
+	struct omap_dss_hdmi_data *priv;
 
 	mutex_lock(&hdmi.hdmi_lock);
 
@@ -430,6 +431,17 @@ static int hdmi_panel_suspend(struct omap_dss_device *dssdev)
 	msleep(100);
 	omapdss_hdmi_display_disable(dssdev);
 
+	priv = dssdev->data;
+	if (gpio_cansleep(priv->ct_cp_hpd_gpio))
+		gpio_set_value_cansleep(priv->ct_cp_hpd_gpio, 0);
+	else
+		gpio_set_value(priv->ct_cp_hpd_gpio, 0);
+
+	if (gpio_cansleep(priv->ls_oe_gpio))
+		gpio_set_value_cansleep(priv->ls_oe_gpio, 0);
+	else
+		gpio_set_value(priv->ls_oe_gpio, 0);
+
 err:
 	mutex_unlock(&hdmi.hdmi_lock);
 	hdmi_inform_hpd_to_cec(0);
@@ -440,6 +452,7 @@ err:
 static int hdmi_panel_resume(struct omap_dss_device *dssdev)
 {
 	int r = 0;
+	struct omap_dss_hdmi_data *priv;
 
 	mutex_lock(&hdmi.hdmi_lock);
 
@@ -451,6 +464,18 @@ static int hdmi_panel_resume(struct omap_dss_device *dssdev)
 	}
 
 	dssdev->state = OMAP_DSS_DISPLAY_DISABLED;
+
+	priv = dssdev->data;
+	if (gpio_cansleep(priv->ct_cp_hpd_gpio))
+		gpio_set_value_cansleep(priv->ct_cp_hpd_gpio, 1);
+	else
+		gpio_set_value(priv->ct_cp_hpd_gpio, 1);
+
+	if (gpio_cansleep(priv->ls_oe_gpio))
+		gpio_set_value_cansleep(priv->ls_oe_gpio, 1);
+	else
+		gpio_set_value(priv->ls_oe_gpio, 1);
+
 err:
 	mutex_unlock(&hdmi.hdmi_lock);
 	hdmi_panel_hpd_handler(hdmi_get_current_hpd());
@@ -555,10 +580,13 @@ done:
 
 int hdmi_panel_hpd_handler(int hpd)
 {
-	__cancel_delayed_work(&hpd_work.dwork);
-	atomic_set(&hpd_work.state, hpd ? HPD_STATE_START : HPD_STATE_OFF);
-	queue_delayed_work(my_workq, &hpd_work.dwork,
-					msecs_to_jiffies(hpd ? 500 : 30));
+	if (hdmi.dssdev->state != OMAP_DSS_DISPLAY_SUSPENDED) {
+		__cancel_delayed_work(&hpd_work.dwork);
+		atomic_set(&hpd_work.state, hpd ? HPD_STATE_START :
+								HPD_STATE_OFF);
+		queue_delayed_work(my_workq, &hpd_work.dwork,
+				   msecs_to_jiffies(hpd ? 500 : 30));
+	}
 	return 0;
 }
 
