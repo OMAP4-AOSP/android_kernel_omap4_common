@@ -270,6 +270,7 @@ static void omap_dss_shutdown(struct platform_device *pdev)
 	dss_disable_all_devices();
 }
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 static void dss_early_suspend(struct early_suspend *h)
 {
 	DSSDBG("%s\n", __func__);
@@ -281,6 +282,7 @@ static void dss_late_resume(struct early_suspend *h)
 	DSSDBG("%s\n", __func__);
 	dss_resume_all_devices();
 }
+#endif
 
 static struct platform_driver omap_dss_driver = {
 	.remove         = omap_dss_remove,
@@ -517,10 +519,12 @@ static int omap_dss_bus_register(void)
 		return r;
 	}
 
+#ifdef CONFIG_HAS_EARLYSUSPEND
 	core.dss_early_suspend_info.suspend = dss_early_suspend;
 	core.dss_early_suspend_info.resume = dss_late_resume;
 	core.dss_early_suspend_info.level = EARLY_SUSPEND_LEVEL_DISABLE_FB + 1;
 	register_early_suspend(&core.dss_early_suspend_info);
+#endif
 	return 0;
 }
 
