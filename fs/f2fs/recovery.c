@@ -52,25 +52,20 @@ static int recover_dentry(struct page *ipage, struct inode *inode)
 		goto out;
 	}
 
-	if (is_inode_flag_set(F2FS_I(dir), FI_DIRTY_DIR)) {
-		iput(dir);
-	} else {
-		add_dirty_dir_inode(dir);
-		set_inode_flag(F2FS_I(dir), FI_DELAY_IPUT);
-	}
-
 	name.len = le32_to_cpu(raw_inode->i_namelen);
 	name.name = raw_inode->i_name;
 
 	if (unlikely(name.len > F2FS_NAME_LEN)) {
 		WARN_ON(1);
 		err = -ENAMETOOLONG;
-		goto out;
+		goto out_err;
 	}
 retry:
 	de = f2fs_find_entry(dir, &name, &page);
-	if (de && inode->i_ino == le32_to_cpu(de->ino))
+	if (de && inode->i_ino == le32_to_cpu(de->ino)) {
+		clear_inode_flag(F2FS_I(inode), FI_INC_LINK);
 		goto out_unmap_put;
+	}
 	if (de) {
 		einode = f2fs_iget(inode->i_sb, le32_to_cpu(de->ino));
 		if (IS_ERR(einode)) {
@@ -80,7 +75,7 @@ retry:
 				err = -EEXIST;
 			goto out_unmap_put;
 		}
-		err = acquire_orphan_inode(F2FS_SB(inode->i_sb));
+		err = acquire_orphan_inode(F2FS_I_SB(inode));
 		if (err) {
 			iput(einode);
 			goto out_unmap_put;
@@ -90,11 +85,23 @@ retry:
 		goto retry;
 	}
 	err = __f2fs_add_link(dir, &name, inode);
+	if (err)
+		goto out_err;
+
+	if (is_inode_flag_set(F2FS_I(dir), FI_DELAY_IPUT)) {
+		iput(dir);
+	} else {
+		add_dirty_dir_inode(dir);
+		set_inode_flag(F2FS_I(dir), FI_DELAY_IPUT);
+	}
+
 	goto out;
 
 out_unmap_put:
 	kunmap(page);
 	f2fs_put_page(page, 0);
+out_err:
+	iput(dir);
 out:
 	f2fs_msg(inode->i_sb, KERN_NOTICE,
 			"%s: ino = %x, name = %s, dir = %lx, err = %d",
@@ -295,12 +302,19 @@ static int do_recover_data(struct f2fs_sb_info *sbi, struct inode *inode,
 	struct node_info ni;
 	int err = 0, recovered = 0;
 
+	/* step 1: recover xattr */
+	if (IS_INODE(page)) {
+		recover_inline_xattr(inode, page);
+	} else if (f2fs_has_xattr_block(ofs_of_node(page))) {
+		recover_xattr_data(inode, page, blkaddr);
+		goto out;
+	}
+
+	/* step 2: recover inline data */
 	if (recover_inline_data(inode, page))
 		goto out;
 
-	if (recover_xattr_data(inode, page, blkaddr))
-		goto out;
-
+	/* step 3: recover data indices */
 	start = start_bidx_of_node(ofs_of_node(page), fi);
 	end = start + ADDRS_PER_PAGE(page, fi);
 
@@ -317,8 +331,8 @@ static int do_recover_data(struct f2fs_sb_info *sbi, struct inode *inode,
 	f2fs_wait_on_page_writeback(dn.node_page, NODE);
 
 	get_node_info(sbi, dn.nid, &ni);
-	f2fs_bug_on(ni.ino != ino_of_node(page));
-	f2fs_bug_on(ofs_of_node(dn.node_page) != ofs_of_node(page));
+	f2fs_bug_on(sbi, ni.ino != ino_of_node(page));
+	f2fs_bug_on(sbi, ofs_of_node(dn.node_page) != ofs_of_node(page));
 
 	for (; start < end; start++) {
 		block_t src, dest;
@@ -330,7 +344,7 @@ static int do_recover_data(struct f2fs_sb_info *sbi, struct inode *inode,
 			if (src == NULL_ADDR) {
 				err = reserve_new_block(&dn);
 				/* We should not get -ENOSPC */
-				f2fs_bug_on(err);
+				f2fs_bug_on(sbi, err);
 			}
 
 			/* Check the previous node page having this index */
@@ -357,8 +371,6 @@ static int do_recover_data(struct f2fs_sb_info *sbi, struct inode *inode,
 	fill_node_footer(dn.node_page, dn.nid, ni.ino,
 					ofs_of_node(page), false);
 	set_page_dirty(dn.node_page);
-
-	recover_node_page(sbi, dn.node_page, &sum, &ni, blkaddr);
 err:
 	f2fs_put_dnode(&dn);
 	f2fs_unlock_op(sbi);
@@ -429,7 +441,9 @@ next:
 
 int recover_fsync_data(struct f2fs_sb_info *sbi)
 {
+	struct curseg_info *curseg = CURSEG_I(sbi, CURSEG_WARM_NODE);
 	struct list_head inode_list;
+	block_t blkaddr;
 	int err;
 	bool need_writecp = false;
 
@@ -442,6 +456,12 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 
 	/* step #1: find fsynced inode numbers */
 	sbi->por_doing = true;
+
+	/* prevent checkpoint */
+	mutex_lock(&sbi->cp_mutex);
+
+	blkaddr = NEXT_FREE_BLKADDR(sbi, curseg);
+
 	err = find_fsync_dnodes(sbi, &inode_list);
 	if (err)
 		goto out;
@@ -453,12 +473,31 @@ int recover_fsync_data(struct f2fs_sb_info *sbi)
 
 	/* step #2: recover data */
 	err = recover_data(sbi, &inode_list, CURSEG_WARM_NODE);
-	f2fs_bug_on(!list_empty(&inode_list));
+	if (!err)
+		f2fs_bug_on(sbi, !list_empty(&inode_list));
 out:
 	destroy_fsync_dnodes(&inode_list);
 	kmem_cache_destroy(fsync_entry_slab);
+
+	if (err) {
+		truncate_inode_pages(NODE_MAPPING(sbi), 0);
+		truncate_inode_pages(META_MAPPING(sbi), 0);
+	}
+
 	sbi->por_doing = false;
-	if (!err && need_writecp)
+	if (err) {
+		discard_next_dnode(sbi, blkaddr);
+
+		/* Flush all the NAT/SIT pages */
+		while (get_pages(sbi, F2FS_DIRTY_META))
+			sync_meta_pages(sbi, META, LONG_MAX);
+		set_ckpt_flags(sbi->ckpt, CP_ERROR_FLAG);
+		mutex_unlock(&sbi->cp_mutex);
+	} else if (need_writecp) {
+		mutex_unlock(&sbi->cp_mutex);
 		write_checkpoint(sbi, false);
+	} else {
+		mutex_unlock(&sbi->cp_mutex);
+	}
 	return err;
 }
