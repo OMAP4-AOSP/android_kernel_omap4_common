@@ -365,7 +365,6 @@ config MACH_TI8148EVM
 
 config MACH_OMAP_4430SDP
 	bool "OMAP 4430 SDP board"
-	default y
 	depends on ARCH_OMAP4
 	select OMAP_PACKAGE_CBL
 	select OMAP_PACKAGE_CBS
@@ -376,7 +375,6 @@ config MACH_OMAP_4430SDP
 
 config MACH_OMAP_BLAZE
 	bool "OMAP 44XX Tablet board"
-	default y
 	depends on ARCH_OMAP4
 	select OMAP_PACKAGE_CBS
 	select REGULATOR_FIXED_VOLTAGE
@@ -386,7 +384,6 @@ config MACH_OMAP_BLAZE
 
 config MACH_OMAP4_PANDA
 	bool "OMAP4 Panda Board"
-	default y
 	depends on ARCH_OMAP4
 	select OMAP_PACKAGE_CBL
 	select OMAP_PACKAGE_CBS
