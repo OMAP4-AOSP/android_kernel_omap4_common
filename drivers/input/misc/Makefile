@@ -70,3 +70,4 @@ obj-$(CONFIG_INPUT_TSL2771)             += tsl2771.o
 obj-$(CONFIG_INPUT_SFH7741)		+= sfh7741.o
 obj-$(CONFIG_INPUT_AK8975)		+= ak8975.o
 obj-$(CONFIG_INPUT_KXTF9)		+= kxtf9.o
+obj-$(CONFIG_INPUT_TWL6040_HSKEYS)	+= twl6040-hskeys.o
