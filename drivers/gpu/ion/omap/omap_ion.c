@@ -163,7 +163,7 @@ void omap_ion_register_pvr_export(void *pvr_export_fd)
 }
 EXPORT_SYMBOL(omap_ion_register_pvr_export);
 
-int omap_ion_share_fd_to_buffers(int fd, struct ion_buffer **buffers,
+int omap_ion_share_fd_to_buffer_fds(int fd, int *buffer_fds,
 		int *num_handles)
 {
 	struct ion_handle **handles;
@@ -189,14 +189,14 @@ int omap_ion_share_fd_to_buffers(int fd, struct ion_buffer **buffers,
 
 	for (i = 0; i < *num_handles; i++) {
 		if (handles[i])
-			buffers[i] = ion_share(client, handles[i]);
+			buffer_fds[i] = ion_share_dma_buf_fd(client, handles[i]);
 	}
 
 exit:
 	kfree(handles);
 	return ret;
 }
-EXPORT_SYMBOL(omap_ion_share_fd_to_buffers);
+EXPORT_SYMBOL(omap_ion_share_fd_to_buffer_fds);
 
 static struct platform_driver ion_driver = {
 	.probe = omap_ion_probe,
