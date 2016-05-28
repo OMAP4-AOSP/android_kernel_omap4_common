@@ -105,17 +105,17 @@ phys_addr_t omaprpc_buffer_lookup(struct omaprpc_instance_t *rpc,
 			 * TODO: need to support 2 ion handles
 			 * per 1 pvr handle (NV12 case)
 			 */
-			struct ion_buffer *ion_buffer = NULL;
+			int buffer_fd = -1;
 			int num_handles = 1;
 			handle = NULL;
-			if (omap_ion_share_fd_to_buffers((int)reserved,
-							 &ion_buffer,
+			if (omap_ion_share_fd_to_buffer_fds((int)reserved,
+							 &buffer_fd,
 							 &num_handles) < 0) {
 				goto to_va;
 			}
-			if (ion_buffer) {
-				handle = ion_import(rpc->ion_client,
-						    ion_buffer);
+			if (IS_ERR_VALUE(buffer_fd)) {
+				handle = ion_import_dma_buf(rpc->ion_client,
+						    buffer_fd);
 			}
 			if (handle && !ion_phys(rpc->ion_client, handle,
 						&paddr, &unused)) {

@@ -505,7 +505,7 @@ long rpmsg_omx_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	case OMX_IOCPVRREGISTER:
 	{
 		struct omx_pvr_data data;
-		struct ion_buffer *ion_bufs[2] = { NULL, NULL };
+		int buffer_fds[2] = { -1, -1 };
 		int num_handles = 2, i = 0;
 
 		if (copy_from_user(&data, (char __user *)arg, sizeof(data))) {
@@ -523,15 +523,15 @@ long rpmsg_omx_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 		}
 
 		data.handles[0] = data.handles[1] = NULL;
-		if (!omap_ion_share_fd_to_buffers(data.fd, ion_bufs,
+		if (!omap_ion_share_fd_to_buffer_fds(data.fd, buffer_fds,
 						  &num_handles)) {
 			unsigned int size = ARRAY_SIZE(data.handles);
 			for (i = 0; (i < num_handles) && (i < size); i++) {
 				struct ion_handle *handle = NULL;
 
-				if (!IS_ERR_OR_NULL(ion_bufs[i]))
-					handle = ion_import(omx->ion_client,
-							   ion_bufs[i]);
+				if (!IS_ERR_VALUE(buffer_fds[i]))
+					handle = ion_import_dma_buf(omx->ion_client,
+							   buffer_fds[i]);
 				if (IS_ERR_OR_NULL(handle))
 					continue;
 
