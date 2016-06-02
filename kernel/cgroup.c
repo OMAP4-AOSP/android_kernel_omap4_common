@@ -289,7 +289,7 @@ static void check_for_release(struct cgroup *cgrp);
 
 /*
  * A queue for waiters to do rmdir() cgroup. A tasks will sleep when
- * cgroup->count == 0 && list_empty(&cgroup->children) && subsys has some
+ * list_empty(&cgroup->children) && subsys has some
  * reference to css->refcnt. In general, this refcnt is expected to goes down
  * to zero, soon.
  *
@@ -385,7 +385,6 @@ static void free_css_set_work(struct work_struct *work)
 		struct cgroup *cgrp = link->cgrp;
 		list_del(&link->cg_link_list);
 		list_del(&link->cgrp_link_list);
-
 		/*
 		 * We may not be holding cgroup_mutex, and if cgrp->count is
 		 * dropped to 0 the cgroup can be destroyed at any time, hence
@@ -3514,6 +3513,7 @@ static int cgroup_write_event_control(struct cgroup *cgrp, struct cftype *cft,
 				      const char *buffer)
 {
 	struct cgroup_event *event = NULL;
+	struct cgroup *cgrp_cfile;
 	unsigned int efd, cfd;
 	struct file *efile = NULL;
 	struct file *cfile = NULL;
@@ -3566,6 +3566,16 @@ static int cgroup_write_event_control(struct cgroup *cgrp, struct cftype *cft,
 	event->cft = __file_cft(cfile);
 	if (IS_ERR(event->cft)) {
 		ret = PTR_ERR(event->cft);
+		goto fail;
+	}
+
+	/*
+	 * The file to be monitored must be in the same cgroup as
+	 * cgroup.event_control is.
+	 */
+	cgrp_cfile = __d_cgrp(cfile->f_dentry->d_parent);
+	if (cgrp_cfile != cgrp) {
+		ret = -EINVAL;
 		goto fail;
 	}
 
@@ -3918,6 +3928,10 @@ static int cgroup_clear_css_refs(struct cgroup *cgrp)
 	struct cgroup_subsys *ss;
 	unsigned long flags;
 	bool failed = false;
+
+	if (atomic_read(&cgrp->count) != 0)
+		return false;
+
 	local_irq_save(flags);
 	for_each_subsys(cgrp->root, ss) {
 		struct cgroup_subsys_state *css = cgrp->subsys[ss->subsys_id];
@@ -3960,19 +3974,23 @@ static int cgroup_clear_css_refs(struct cgroup *cgrp)
 	return !failed;
 }
 
-/* checks if all of the css_sets attached to a cgroup have a refcount of 0.
- * Must be called with css_set_lock held */
+/* Checks if all of the css_sets attached to a cgroup have a refcount of 0. */
 static int cgroup_css_sets_empty(struct cgroup *cgrp)
 {
 	struct cg_cgroup_link *link;
+	int retval = 1;
 
+	read_lock(&css_set_lock);
 	list_for_each_entry(link, &cgrp->css_sets, cgrp_link_list) {
 		struct css_set *cg = link->cg;
-		if (atomic_read(&cg->refcount) > 0)
-			return 0;
+		if (atomic_read(&cg->refcount) > 0) {
+			retval = 0;
+			break;
+		}
 	}
+	read_unlock(&css_set_lock);
 
-	return 1;
+	return retval;
 }
 
 static int cgroup_rmdir(struct inode *unused_dir, struct dentry *dentry)
