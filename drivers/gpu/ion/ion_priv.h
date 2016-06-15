@@ -80,7 +80,6 @@ struct ion_buffer {
 	int handle_count;
 	char task_comm[TASK_COMM_LEN];
 	pid_t pid;
-	bool cached;
 };
 
 /**
@@ -94,8 +93,6 @@ struct ion_buffer {
  * @map_kernel		map memory to the kernel
  * @unmap_kernel	unmap memory to the kernel
  * @map_user		map memory to userspace
- * @flush_user		flush memory if mapped as cacheable
- * @inval_user		invalidate memory if mapped as cacheable
  */
 struct ion_heap_ops {
 	int (*allocate) (struct ion_heap *heap,
@@ -111,10 +108,6 @@ struct ion_heap_ops {
 	void (*unmap_kernel) (struct ion_heap *heap, struct ion_buffer *buffer);
 	int (*map_user) (struct ion_heap *mapper, struct ion_buffer *buffer,
 			 struct vm_area_struct *vma);
-	int (*flush_user) (struct ion_buffer *buffer, size_t len,
-			unsigned long vaddr);
-	int (*inval_user) (struct ion_buffer *buffer, size_t len,
-			unsigned long vaddr);
 };
 
 /**
@@ -291,18 +284,5 @@ struct ion_page_pool *ion_page_pool_create(gfp_t gfp_mask, unsigned int order);
 void ion_page_pool_destroy(struct ion_page_pool *);
 void *ion_page_pool_alloc(struct ion_page_pool *);
 void ion_page_pool_free(struct ion_page_pool *, struct page *);
-
-/**
- * Flushing entire cache is more efficient than flushing virtual address
- * range of a buffer whose size is 200Kbytes or higher, since line by
- * line operations of huge buffers consume lot of cpu cycles
- */
-#define FULL_CACHE_FLUSH_THRESHOLD 200000
-
-enum cache_operation {
-	CACHE_CLEAN		= 0x0,
-	CACHE_INVALIDATE	= 0x1,
-	CACHE_FLUSH		= 0x2,
-};
 
 #endif /* _ION_PRIV_H */
