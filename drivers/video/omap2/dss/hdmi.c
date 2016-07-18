@@ -73,9 +73,6 @@ static struct {
 	int hdmi_irq;
 	bool can_do_hdmi;
 
-	u8 s3d_mode;
-	bool s3d_enable;
-
 	struct clk *sys_clk;
 	struct clk *dss_clk;
 
@@ -476,16 +473,6 @@ static int hdmi_power_on(struct omap_dss_device *dssdev)
 		goto err;
 	}
 
-	if (hdmi.s3d_enable && cpu_is_omap44xx()) {
-		struct hdmi_core_vendor_specific_infoframe config;
-		config.enable = hdmi.s3d_enable;
-		config.s3d_structure = hdmi.s3d_mode;
-		if (config.s3d_structure == 8)
-			config.s3d_ext_data = 1;
-
-		hdmi.ip_data.ops->vsi_config(&hdmi.ip_data, &config);
-	}
-
 	hdmi.ip_data.cfg.cm.mode = hdmi.can_do_hdmi ? hdmi.mode : HDMI_DVI;
 
 	hdmi.ip_data.ops->video_configure(&hdmi.ip_data);
@@ -528,28 +515,6 @@ err_mgr_enable:
 err:
 	hdmi_runtime_put();
 	return -EIO;
-}
-
-void omapdss_hdmi_set_s3d_mode(int val)
-{
-	hdmi.s3d_mode = val;
-}
-
-int omapdss_hdmi_get_s3d_mode(void)
-{
-	return hdmi.s3d_mode;
-}
-
-void omapdss_hdmi_enable_s3d(bool enable)
-{
-	hdmi.s3d_enable = enable;
-	if (hdmi.enabled)
-		omapdss_hdmi_display_set_timing(hdmi.dssdev);
-}
-
-int omapdss_hdmi_get_s3d_enable(void)
-{
-	return hdmi.s3d_enable;
 }
 
 static void hdmi_power_off(struct omap_dss_device *dssdev)

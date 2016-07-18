@@ -883,7 +883,6 @@ static const struct ti_hdmi_ip_ops omap4_hdmi_functions = {
 	.hdcp_status			=	NULL,
 	.hdcp_int_handler		=	NULL,
 	.reset_wrapper			=	hdmi_ti_4xxx_set_wait_soft_reset,
-	.vsi_config			= 	hdmi_core_vsi_config,
 };
 
 /* HDMI OMAP5 Functions*/

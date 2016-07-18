@@ -511,5 +511,4 @@ void hdmi_wp_init(struct omap_video_timings *timings,
 			struct hdmi_irq_vector *irq_enable);
 void hdmi_wp_irq_enable(struct hdmi_ip_data *ip_data,
 			struct hdmi_irq_vector *irq_enable);
-
 #endif

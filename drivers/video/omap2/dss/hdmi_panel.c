@@ -32,10 +32,6 @@
 
 #include "dss.h"
 
-#if defined(CONFIG_OMAP4_DSS_HDMI) || defined(CONFIG_OMAP5_DSS_HDMI)
-#include "ti_hdmi.h"
-#endif
-
 enum omap_hdmi_users {
 	HDMI_USER_VIDEO	= 1 << 0,
 	HDMI_USER_AUDIO	= 1 << 1,
@@ -139,97 +135,6 @@ static ssize_t hdmi_edid_show(struct device *dev,
 	return omapdss_get_edid(buf);
 }
 
-static ssize_t hdmi_s3d_mode_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	int r;
-	ssize_t size;
-	r = omapdss_hdmi_get_s3d_mode();
-	switch (r) {
-	case HDMI_FRAME_PACKING:
-		size = snprintf(buf, PAGE_SIZE, "frame_packing\n");
-		break;
-	case HDMI_FIELD_ALTERNATIVE:
-		size = snprintf(buf, PAGE_SIZE, "field_alternative\n");
-		break;
-	case HDMI_LINE_ALTERNATIVE:
-		size = snprintf(buf, PAGE_SIZE, "line_alternative\n");
-		break;
-	case HDMI_SIDE_BY_SIDE_FULL:
-		size = snprintf(buf, PAGE_SIZE, "side_by_side_full\n");
-		break;
-	case HDMI_L_DEPTH:
-		size = snprintf(buf, PAGE_SIZE, "l_depth\n");
-		break;
-	case HDMI_L_DEPTH_GFX_GFX_DEPTH:
-		size = snprintf(buf, PAGE_SIZE, "l_depth_gfx_depth\n");
-		break;
-	case HDMI_TOPBOTTOM:
-		size = snprintf(buf, PAGE_SIZE, "top_bottom\n");
-		break;
-	case HDMI_SIDE_BY_SIDE_HALF:
-		size = snprintf(buf, PAGE_SIZE, "side_by_side_half\n");
-		break;
-	default:
-		return -EINVAL;
-	}
-	return size;
-}
-
-static ssize_t hdmi_s3d_mode_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t size)
-{
-	unsigned long s3d_mode;
-	int r = kstrtoul(buf, 0, &s3d_mode);
-	if (r)
-		return -EINVAL;
-	switch (s3d_mode) {
-	case HDMI_FRAME_PACKING:
-	case HDMI_FIELD_ALTERNATIVE:
-	case HDMI_LINE_ALTERNATIVE:
-	case HDMI_SIDE_BY_SIDE_FULL:
-	case HDMI_L_DEPTH:
-	case HDMI_L_DEPTH_GFX_GFX_DEPTH:
-	case HDMI_TOPBOTTOM:
-	case HDMI_SIDE_BY_SIDE_HALF:
-		omapdss_hdmi_set_s3d_mode(s3d_mode);
-		break;
-	default:
-		return -EINVAL;
-	}
-	return size;
-}
-
-static ssize_t hdmi_s3d_enable_store(struct device *dev,
-		struct device_attribute *attr,
-		const char *buf, size_t size)
-{
-	int enable;
-
-	int r = kstrtoint(buf, 0, &enable);
-	if (r)
-		return -EINVAL;
-	enable = !!enable;
-
-	omapdss_hdmi_enable_s3d(enable);
-
-	return size;
-}
-
-static ssize_t hdmi_s3d_enable_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	int r;
-	r = omapdss_hdmi_get_s3d_enable();
-	return snprintf(buf, PAGE_SIZE, "%d\n", r);
-}
-
-static DEVICE_ATTR(s3d_enable, S_IRUGO | S_IWUSR, hdmi_s3d_enable_show,
-							hdmi_s3d_enable_store);
-static DEVICE_ATTR(s3d_type, S_IRUGO | S_IWUSR, hdmi_s3d_mode_show,
-							hdmi_s3d_mode_store);
-
 static DEVICE_ATTR(edid, S_IRUGO | S_IWUSR, hdmi_edid_show, NULL);
 
 static int hdmi_panel_probe(struct omap_dss_device *dssdev)
@@ -254,9 +159,7 @@ static int hdmi_panel_probe(struct omap_dss_device *dssdev)
 	/* sysfs entry to to set deepcolor mode and hdmi_timings */
 	if (device_create_file(&dssdev->dev, &dev_attr_deepcolor) ||
 	    device_create_file(&dssdev->dev, &dev_attr_hdmi_timings) ||
-	    device_create_file(&dssdev->dev, &dev_attr_edid) ||
-	    device_create_file(&dssdev->dev, &dev_attr_s3d_enable) ||
-	    device_create_file(&dssdev->dev, &dev_attr_s3d_type))
+	    device_create_file(&dssdev->dev, &dev_attr_edid))
 		DSSERR("failed to create sysfs file\n");
 
 	DSSDBG("hdmi_panel_probe x_res= %d y_res = %d\n",
@@ -522,7 +425,6 @@ static void hdmi_hotplug_detect_worker(struct work_struct *work)
 			hdmi_notify_hpd(dssdev, false);
 			mutex_unlock(&hdmi.hdmi_lock);
 			dssdev->driver->disable(dssdev);
-			omapdss_hdmi_enable_s3d(false);
 			/* clear EDID and mode */
 			omapdss_hdmi_clear_edid();
 			mutex_lock(&hdmi.hdmi_lock);
