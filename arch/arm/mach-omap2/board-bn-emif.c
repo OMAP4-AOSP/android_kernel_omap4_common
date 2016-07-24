@@ -7,6 +7,7 @@
  * published by the Free Software Foundation.
  */
 
+#include <linux/io.h>
 #include <asm/system_info.h>
 #include <linux/platform_device.h>
 
@@ -15,6 +16,42 @@
 
 #include "board-hummingbird.h"
 #include "board-ovation.h"
+
+#define OMAP44XX_EMIF1				0x4c000000
+
+#define OMAP44XX_EMIF_LPDDR2_MODE_REG_DATA	0x0040
+#define OMAP44XX_EMIF_LPDDR2_MODE_REG_CFG	0x0050
+
+#define LPDDR2_MR5      5
+
+#define SAMSUNG_SDRAM	0x1
+#define ELPIDA_SDRAM	0x3
+#define HYNIX_SDRAM 	0x6
+
+static int read_reg_data(int mrid)
+{
+	int val;
+	void __iomem *base;
+
+	base = ioremap(OMAP44XX_EMIF1, SZ_1M);
+
+	__raw_writel(mrid, base + OMAP44XX_EMIF_LPDDR2_MODE_REG_CFG);
+	val =  __raw_readb(base  +  OMAP44XX_EMIF_LPDDR2_MODE_REG_DATA);
+
+	iounmap(base);
+
+	return val;
+}
+
+/*
+ * omap_sdram_vendor - identify ddr vendor
+ * Identify DDR vendor ID for selecting correct timing parameter
+ * for dynamic ddr detection.
+ */
+int omap_sdram_vendor(void)
+{
+	return read_reg_data(LPDDR2_MR5);
+}
 
 void __init bn_emif_init(void)
 {
