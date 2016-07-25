@@ -723,7 +723,7 @@ config INPUT_KXTF9
 
 config INPUT_TWL6040_HSKEYS
 	bool "TWL6040 HSKEYS Driver"
-	depends on TWL4030_CORE && TWL6030_GPADC && TWL6040_CODEC
+	depends on TWL4030_CORE && TWL6030_GPADC && TWL6040_CORE
 	default n
 	 help
 	 enable TWL6040 headset buttons driver

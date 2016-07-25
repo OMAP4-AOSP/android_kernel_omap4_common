@@ -19,13 +19,13 @@
 #include <linux/notifier.h>
 #include <linux/platform_device.h>
 #include <linux/i2c/twl.h>
-#include <linux/mfd/twl6040-codec.h>
+#include <linux/mfd/twl6040.h>
 #include <linux/input/twl6040-hskeys.h>
 #include "../../../sound/soc/codecs/twl6040.h"
 
 struct keys_data {
 	struct twl6040 *twl6040;
-	struct twl4030_codec_hskeys_data *pdata;
+	struct twl6040_hskeys_data *pdata;
 	struct input_dev *input_dev;
 	struct notifier_block nb;
 };
@@ -75,7 +75,7 @@ static int twl6040_hskeys_update(struct notifier_block *nb, unsigned long event,
 static int twl6030_hskeys_probe(struct platform_device *pdev)
 {
 	struct keys_data *data;
-	struct twl4030_codec_hskeys_data *pdata = pdev->dev.platform_data;
+	struct twl6040_hskeys_data *pdata = pdev->dev.platform_data;
 	struct hskeys_keymap_data *hskeymap_data;
 	size_t i;
 	int ret = 0;
