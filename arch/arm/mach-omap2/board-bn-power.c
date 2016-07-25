@@ -177,7 +177,7 @@ static struct hskeys_keymap_data bn_hskeymap_data = {
 	.keymap_size = ARRAY_SIZE(bn_hskey_data),
 };
 
-static struct twl4030_codec_hskeys_data twl6040_hskeys = {
+static struct twl6040_hskeys_data twl6040_hskeys = {
 	.data  = &bn_hskeymap_data,
 };
 #endif
