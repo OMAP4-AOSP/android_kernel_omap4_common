@@ -91,6 +91,10 @@ struct twl6040_data {
 	struct wake_lock wake_lock;
 };
 
+#ifdef CONFIG_INPUT_TWL6040_HSKEYS
+static BLOCKING_NOTIFIER_HEAD(notifier_list);
+#endif
+
 /*
  * twl6040 register cache & default register settings
  */
@@ -523,6 +527,20 @@ void twl6040_hs_jack_detect(struct snd_soc_codec *codec,
 	twl6040_hs_jack_report(codec, hs_jack->jack, hs_jack->report);
 }
 EXPORT_SYMBOL_GPL(twl6040_hs_jack_detect);
+
+#ifdef CONFIG_INPUT_TWL6040_HSKEYS
+int twl6040_register_hook_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_register(&notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(twl6040_register_hook_notifier);
+
+int twl6040_unregister_hook_notifier(struct notifier_block *nb)
+{
+	return blocking_notifier_chain_unregister(&notifier_list, nb);
+}
+EXPORT_SYMBOL_GPL(twl6040_unregister_hook_notifier);
+#endif
 
 static void twl6040_accessory_work(struct work_struct *work)
 {

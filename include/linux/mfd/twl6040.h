@@ -225,6 +225,12 @@ struct twl6040_vibra_data {
 	u8 voltage_raise_speed;
 };
 
+#ifdef CONFIG_INPUT_TWL6040_HSKEYS
+struct twl6040_hskeys_data {
+	void *data;
+};
+#endif
+
 struct twl6040;
 
 struct twl6040_platform_data {
@@ -237,6 +243,9 @@ struct twl6040_platform_data {
 
 	struct twl6040_codec_data *codec;
 	struct twl6040_vibra_data *vibra;
+#ifdef CONFIG_INPUT_TWL6040_HSKEYS
+	struct twl6040_hskeys_data *hskeys;
+#endif
 };
 
 struct regmap;
